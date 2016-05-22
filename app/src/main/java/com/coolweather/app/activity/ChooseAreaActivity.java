@@ -13,6 +13,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.coolweather.app.R;
 import com.coolweather.app.db.CoolWeatherDB;
@@ -65,11 +66,18 @@ public class ChooseAreaActivity extends Activity {
 	 */
 	private int currentLevel;
 
+	/**
+	 * 是否从WeatherActivity中跳转过来。
+	 */
+	private boolean isFromWeatherActivity;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		SharedPreferences prefs = PreferenceManager. getDefaultSharedPreferences(this);
-		if (prefs.getBoolean("city_selected", false)) {
+		isFromWeatherActivity = getIntent().getBooleanExtra("from_weather_activity", false);
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		// 已经选择了城市且不是从WeatherActivity跳转过来，才会直接跳转到WeatherActivity
+		if (prefs.getBoolean("city_selected", false) && !isFromWeatherActivity) {
 			Intent intent = new Intent(this, WeatherActivity.class);
 			startActivity(intent);
 			finish();
@@ -143,7 +151,7 @@ public class ChooseAreaActivity extends Activity {
 	}
 
 	/**
-	 * 查询选中省内所有的县，优先从数据库查询，如果没有查询到再去服务器上查询。
+	 * 查询选中市内所有的县，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryCounties() {
 		countyList=coolWeatherDB.loadCounties(selectedCity.getId());
@@ -204,6 +212,14 @@ public class ChooseAreaActivity extends Activity {
 
 			@Override
 			public void onError(Exception e) {
+				// 通过runOnUiThread()方法回到主线程处理逻辑
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						closeProgressDialog();
+						Toast.makeText(ChooseAreaActivity.this, "加载失败", Toast.LENGTH_SHORT).show();
+					}
+				});
 
 			}
 		});
@@ -242,6 +258,10 @@ public class ChooseAreaActivity extends Activity {
 		} else if (currentLevel == LEVEL_CITY) {
 			queryProvinces();
 		} else {
+			if (isFromWeatherActivity) {
+				Intent intent = new Intent(this, WeatherActivity.class);
+				startActivity(intent);
+			}
 			finish();
 		}
 	}
